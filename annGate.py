@@ -79,10 +79,11 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	return
 
 
-L0 = [ANN(2), ANN(2)]
-L1 = [ANN(2)]
-
-x = ANN(2, 0)
-dj, j = gradJ(x, [1, 1], 0)
-print(dj, j)
-print(x.Y([1, 1]))
+L0 = [ANN(2, 0), ANN(2, 0)]
+L1 = [ANN(2, 0)]
+_lrnCoef = 0.1
+X0 = [1, 1]
+X1 = [L0[0].Y(X0), L0[1].Y(X0)]
+print(L1[0].A)
+dJ, J = iterBackprop(L1[0], _lrnCoef, [X1], [0])
+print(L1[0].A, L1[0].u, dJ, J)
