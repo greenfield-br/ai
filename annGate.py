@@ -24,21 +24,30 @@ class ANN:
 		return y
 
 	def setA(self, _A):
-		self.A = array(_A)
+		arrA = array(_A)
+		retCode = 0
+		if (arrA.ndim == 1) and (arrA.shape == self.A.shape):
+			self.A = arrA
+			retCode = 1
+		return retCode
 
 	def setu(self, _u):
-		self.u = _u
+		retCode = 0
+		if isinstance(_u, int) or isinstance(_u, float):
+			self.u = _u
+			retCode = 1
+		return retCode
 
 
 def gradJ(_an, _X, _hatY):
 	#initialize neuron
 	e = _an.Y(_X) - _hatY
-	dJ = zeros(_an.N+1)
+	dJ = zeros(_an.N + 1)
 	for counter in range(_an.N):
 		dJ[counter] = 0 #assumes activation function is a ramp, not an identity function.
 		if _an.z > 0:
 			dJ[counter] =  2 * e * 1 * _X[counter]
-		if _an.mode == 1:
+		if _an.mode == 1: #assumes activation function is a tri, not a ramp.
 			if _an.z > 1:
 				dJ[counter] = 2 * e * (-1) * _X[counter]
 			if _an.z > 2:
@@ -57,7 +66,7 @@ def gradJ(_an, _X, _hatY):
 def iterBackprop(_an, _lrnCoef, _lstX, _lstHatY):
 	_A = _an.A
 	_u = _an.u
-	dJ = zeros(_an.N+1)
+	dJ = zeros(_an.N + 1)
 	J = 0
 	for counter in range(len(_lstX)):
 		dj, j = gradJ(_an, array(_lstX[counter]), array(_lstHatY[counter]))
@@ -66,8 +75,8 @@ def iterBackprop(_an, _lrnCoef, _lstX, _lstHatY):
 	dJ /= len(_lstX)
 	_A -= _lrnCoef * dJ[:-1]
 	_u -= _lrnCoef * dJ[-1]
-	_an.setA(_A)
-	_an.setu(_u)
+	foo = _an.setA(_A)
+	foo = _an.setu(_u)
 	return dJ, J
 
 
@@ -84,6 +93,6 @@ L1 = [ANN(2, 0)]
 _lrnCoef = 0.1
 X0 = [1, 1]
 X1 = [L0[0].Y(X0), L0[1].Y(X0)]
-print(L1[0].A)
+print(L1[0].A, L1[0].u)
 dJ, J = iterBackprop(L1[0], _lrnCoef, [X1], [0])
-print(L1[0].A, L1[0].u, dJ, J)
+print(L1[0].A, L1[0].u)
