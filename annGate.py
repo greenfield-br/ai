@@ -42,6 +42,8 @@ class AN:
 class ANN:
 
 	def __init__(self, _an, _in, _out, _KN):
+		# KN dimension is the number of layers - 1.
+		# the last layer is defined by previous and the number of output signals
 		retCode = 1 #assume failure by default
 		#elementary tests
 		if not isinstance(_an, AN):
@@ -70,13 +72,31 @@ class ANN:
 		#ANN building as list of lists of AN class instances
 		lenKN = len(arrKN)
 		lstANN = []
-		Nin = _in
+		Nin = _in #first layer neurons inputs number equals the number of input signals
 		for counter1 in range(lenKN):
 			lstANN.append([])
-			for counter2 in range(arrKN[counter1]):
+			for foo in range(arrKN[counter1]):
 				lstANN[-1].append(AN(Nin))
 			Nin = arrKN[counter1]
+		#adding last layer list. Its neurons number equals the number of output signals
+		lstANN.append([])
+		for foo in range(_out):
+			lstANN[-1].append(AN(Nin))
+		#list is complete.
 		self.lst = lstANN
+
+	def Y(self, _IN):
+		retCode = 1
+		#array structure tests
+		arrIN = array(_IN)
+		if arrIN.ndim != 1:
+			retCode = 0
+		if arrIN.shape[0] < 1:
+			retCode = 0
+		if retCode != 1:
+			return retCode
+				
+
 
 def gradJ(_an, _X, _hatY):
 	#initialize neuron
@@ -140,4 +160,4 @@ print(L1[0].A, L1[0].u)
 
 x = ANN(AN(2,0), 2, 2, [2, 3, 4, 5])
 #print(x.an.u)
-print(x.lst[3][0].N)
+print(x.lst)
