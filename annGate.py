@@ -2,7 +2,7 @@
 from numpy import ones, zeros, array, dot
 
 
-class ANN:
+class AN:
 
 	def __init__(self, _N, _mode = 1):
 		self.N = _N				#number of input entries
@@ -38,6 +38,45 @@ class ANN:
 			retCode = 1
 		return retCode
 
+
+class ANN:
+
+	def __init__(self, _an, _in, _out, _KN):
+		retCode = 1 #assume failure by default
+		#elementary tests
+		if not isinstance(_an, AN):
+			retCode = 0
+		if not isinstance(_in, int):
+			retCode = 0
+		if not isinstance(_out, int):
+			retCode = 0
+		if not isinstance(_KN, list):
+			retCode = 0
+		if retCode != 1: #exit if failed, as expected.
+			return retCode
+		#array structure tests
+		arrKN = array(_KN)
+		if arrKN.ndim != 1:
+			retCode = 0
+		if arrKN.shape[0] < 1:
+			retCode = 0
+		if retCode != 1:
+			return retCode
+		#array content tests
+		if any(_e < 1 for _e in arrKN):
+			retCode = 0
+		if retCode != 1:
+			return retCode
+		#ANN building as list of lists of AN class instances
+		lenKN = len(arrKN)
+		lstANN = []
+		Nin = _in
+		for counter1 in range(lenKN):
+			lstANN.append([])
+			for counter2 in range(arrKN[counter1]):
+				lstANN[-1].append(AN(Nin))
+			Nin = arrKN[counter1]
+		self.lst = lstANN
 
 def gradJ(_an, _X, _hatY):
 	#initialize neuron
@@ -88,11 +127,17 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	return
 
 
-L0 = [ANN(2, 0), ANN(2, 0)]
-L1 = [ANN(2, 0)]
+"""
+L0 = [AN(2, 0), AN(2, 0)]
+L1 = [AN(2, 0)]
 _lrnCoef = 0.1
 X0 = [1, 1]
 X1 = [L0[0].Y(X0), L0[1].Y(X0)]
 print(L1[0].A, L1[0].u)
 dJ, J = iterBackprop(L1[0], _lrnCoef, [X1], [0])
 print(L1[0].A, L1[0].u)
+"""
+
+x = ANN(AN(2,0), 2, 2, [2, 3, 4, 5])
+#print(x.an.u)
+print(x.lst[3][0].N)
