@@ -57,27 +57,27 @@ class ANN:
 		if retCode != 1: #exit if failed, as expected.
 			return retCode
 		#array structure tests
-		arrKN = array(_KN)
-		if arrKN.ndim != 1:
+		self.arrKN = array(_KN)
+		if self.arrKN.ndim != 1:
 			retCode = 0
-		if arrKN.shape[0] < 1:
+		if self.arrKN.shape[0] < 1:
 			retCode = 0
 		if retCode != 1:
 			return retCode
 		#array content tests
-		if any(_e < 1 for _e in arrKN):
+		if any(_e < 1 for _e in self.arrKN):
 			retCode = 0
 		if retCode != 1:
 			return retCode
 		#ANN building as list of lists of AN class instances
-		lenKN = len(arrKN)
+		lenKN = len(self.arrKN)
 		lstANN = []
 		Nin = _in #first layer neurons inputs number equals the number of input signals
 		for counter1 in range(lenKN):
 			lstANN.append([])
-			for foo in range(arrKN[counter1]):
+			for foo in range(self.arrKN[counter1]):
 				lstANN[-1].append(AN(Nin))
-			Nin = arrKN[counter1]
+			Nin = self.arrKN[counter1]
 		#adding last layer list. Its neurons number equals the number of output signals
 		lstANN.append([])
 		for foo in range(_out):
@@ -95,8 +95,16 @@ class ANN:
 			retCode = 0
 		if retCode != 1:
 			return retCode
-				
-
+		lstY = []
+		lenKN = len(self.lst)
+		Kin = _IN
+		for counter1 in range(lenKN):
+			lstY.append([])
+			lenK = len(self.lst[counter1])
+			for counter2 in range(lenK):
+				lstY[counter1].append(self.lst[counter1][counter2].Y(Kin))
+			Kin = lstY[counter1]
+		print(lstY)
 
 def gradJ(_an, _X, _hatY):
 	#initialize neuron
@@ -158,6 +166,20 @@ dJ, J = iterBackprop(L1[0], _lrnCoef, [X1], [0])
 print(L1[0].A, L1[0].u)
 """
 
-x = ANN(AN(2,0), 2, 2, [2, 3, 4, 5])
+"""
+def some_loops(A1, A2, B1, B2, fn):
+    for a in [A1, A2]:
+        do_something_1()
+
+        for b in [B1, B2]:
+            fn()
+
+some_loops(A1, A2, B1, B2, do_something_2)
+some_loops(A1, A2, B1, B2, do_something_different_2)
+"""
+
+
+x = ANN(AN(2,0), 2, 3, [4, 3])
 #print(x.an.u)
-print(x.lst)
+#print(x.lst[0][0].A)
+x.Y([1, 0.8])
