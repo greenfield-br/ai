@@ -69,21 +69,36 @@ class ANN:
 			retCode = 0
 		if retCode != 1:
 			return retCode
-		#ANN building as list of lists of AN class instances
-		lenKN = len(self.arrKN)
-		lstANN = []
-		Nin = _in #first layer neurons inputs number equals the number of input signals
-		for counter1 in range(lenKN):
+
+		def foo1(self):
 			lstANN.append([])
-			for foo in range(self.arrKN[counter1]):
-				lstANN[-1].append(AN(Nin))
-			Nin = self.arrKN[counter1]
-		#adding last layer list. Its neurons number equals the number of output signals
-		lstANN.append([])
-		for foo in range(_out):
-			lstANN[-1].append(AN(Nin))
-		#list is complete.
+
+		def foo2(self, _arg):
+			lstANN[-1].append(AN(_arg))
+
+		def looANN(self, fn1, fn2, mode = 'build'):
+			lenKN = len(self.arrKN)
+			#first layer neurons inputs number equals the number of input signals
+			Nin = _in
+			for counter1 in range(lenKN):
+				foo1(self)
+				for foo in range(self.arrKN[counter1]):
+					foo2(self, Nin)
+				Nin = self.arrKN[counter1]
+			#adding last layer list. Its neurons number equals the number of output signals
+			foo1(self)
+			for foo in range(_out):
+				foo2(self, Nin)
+
+		#ANN building as list of lists of AN class instances
+		lstANN = []
+		looANN(self, foo1, foo2)
 		self.lst = lstANN
+		# the above set of functions is an attempt to generalize the loop thorugh the layers
+		# clearly it will be reused. however, the variations it has from one usage to another
+		# exceed my current ability to encompass them on a single generator (whatever its name is).
+		# so sorry... for this and for way more.
+
 
 	def Y(self, _IN):
 		retCode = 1
