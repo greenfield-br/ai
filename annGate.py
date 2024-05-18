@@ -1,5 +1,5 @@
 #XOR gate
-from numpy import ones, zeros, array, dot
+from numpy import ones, zeros, array, dot, ndarray
 
 
 class AN:
@@ -70,35 +70,21 @@ class ANN:
 		if retCode != 1:
 			return retCode
 
-		def foo1(self):
-			lstANN.append([])
-
-		def foo2(self, _arg):
-			lstANN[-1].append(AN(_arg))
-
-		def looANN(self, fn1, fn2, mode = 'build'):
-			lenKN = len(self.arrKN)
-			#first layer neurons inputs number equals the number of input signals
-			Nin = _in
-			for counter1 in range(lenKN):
-				foo1(self)
-				for foo in range(self.arrKN[counter1]):
-					foo2(self, Nin)
-				Nin = self.arrKN[counter1]
-			#adding last layer list. Its neurons number equals the number of output signals
-			foo1(self)
-			for foo in range(_out):
-				foo2(self, Nin)
-
 		#ANN building as list of lists of AN class instances
 		lstANN = []
-		looANN(self, foo1, foo2)
+		lenKN = len(self.arrKN)
+		#first layer neurons inputs number equals the number of input signals
+		Nin = _in
+		for counter1 in range(lenKN):
+			lstANN.append([])
+			for foo in range(self.arrKN[counter1]):
+				lstANN[-1].append(AN(Nin))
+			Nin = self.arrKN[counter1]
+		#adding last layer list. Its neurons number equals the number of output signals
+		lstANN.append([])
+		for foo in range(_out):
+			lstANN[-1].append(AN(Nin))
 		self.lst = lstANN
-		# the above set of functions is an attempt to generalize the loop thorugh the layers
-		# clearly it will be reused. however, the variations it has from one usage to another
-		# exceed my current ability to encompass them on a single generator (whatever its name is).
-		# so sorry... for this and for way more.
-
 
 	def Y(self, _IN):
 		retCode = 1
@@ -119,46 +105,57 @@ class ANN:
 			for counter2 in range(lenK):
 				lstY[counter1].append(self.lst[counter1][counter2].Y(Kin))
 			Kin = lstY[counter1]
-		print(lstY)
+		return lstY
 
-def gradJ(_an, _X, _hatY):
-	#initialize neuron
-	e = _an.Y(_X) - _hatY
-	dJ = zeros(_an.N + 1)
-	for counter in range(_an.N):
-		dJ[counter] = 0 #assumes activation function is a ramp, not an identity function.
-		if _an.z > 0:
-			dJ[counter] =  2 * e * 1 * _X[counter]
-		if _an.mode == 1: #assumes activation function is a tri, not a ramp.
-			if _an.z > 1:
-				dJ[counter] = 2 * e * (-1) * _X[counter]
-			if _an.z > 2:
-				dJ[counter] = 0
-	dJ[-1] = 0
-	if _an.z > 0:
-		dJ[-1] =  2 * e * 1
-	if _an.mode == 1:
-		if _an.z > 1:
-			dJ[-1] = 2 * e * (-1)
-		if _an.z > 2:
-			dJ[-1] = 0
+
+def gradJ(_lst, _X, _hatY):
+	hatY = array(_hatY)
+	lstY = _lst.Y(_X)
+	lyrX = array(lstY[-2])
+	lyrY = array(lstY[-1])
+	e = lyrY - hatY
+	lenK = len(lstY)
+	Nin = len(lyrX)
+	Nk = len(lyrY)
+	dJ = zeros([Nk, Nin+1])
+	for counter1 in range(Nk):
+		for counter2 in range(Nin):
+			dJ[counter1][counter2] = 0 #assumes activation function is a ramp, not an identity function.
+			if _lst.lst[-1][counter1].z > 0:
+				dJ[counter1][counter2] =  2 * e[counter1] * 1 * lyrX[counter2]
+			if _lst.lst[-1][counter1].mode == 1: #assumes activation function is a tri, not a ramp.
+				if _lst.lst[-1][counter1].z > 1:
+					dJ[counter1][counter2] = 2 * e[counter1] * (-1) * lyrX[counter2]
+				if _lst.lst[-1][counter1].z > 2:
+					dJ[counter1][counter2] = 0
+		dJ[counter1][-1] = 0
+		if _lst.lst[-1][counter1].z > 0:
+			dJ[counter1][-1] =  2 * e[counter1] * 1
+		if _lst.lst[-1][counter1].mode == 1:
+			if _lst.lst[-1][counter1].z > 1:
+				dJ[counter1][-1] = 2 * e[counter1] * (-1)
+			if _lst.lst[-1][counter1].z > 2:
+				dJ[counter1][-1] = 0
 	return dJ, dot(e, e)
 
 
-def iterBackprop(_an, _lrnCoef, _lstX, _lstHatY):
-	_A = _an.A
-	_u = _an.u
-	dJ = zeros(_an.N + 1)
+def iterBackprop(_lst, _lrnCoef, _lstX, _lstHatY):
+	lenK = len(_lst.lst[-1])
+	_A = [_lst.lst[-1][i].A for i in range(lenK)] #_lst.lst[-1][0].A
+	_u = [_lst.lst[-1][i].u for i in range(lenK)]
+	dJ = zeros([lenK, _lst.lst[-1][0].N+1])
 	J = 0
 	for counter in range(len(_lstX)):
-		dj, j = gradJ(_an, array(_lstX[counter]), array(_lstHatY[counter]))
+		[dj, j] = gradJ(_lst, _lstX[counter], _lstHatY[counter])
 		dJ += dj
 		J  += j
 	dJ /= len(_lstX)
-	_A -= _lrnCoef * dJ[:-1]
-	_u -= _lrnCoef * dJ[-1]
-	foo = _an.setA(_A)
-	foo = _an.setu(_u)
+	_A -= _lrnCoef * array([i[:-1] for i in dJ])
+	_u -= _lrnCoef * array([i[ -1] for i in dJ])
+	for counter in range(lenK):
+		foo = _lst.lst[-1][counter].setA(_A[counter])
+		foo = _lst.lst[-1][counter].setu(_u[counter])
+	_A = [_lst.lst[-1][i].A for i in range(lenK)] #_lst.lst[-1][0].A
 	return dJ, J
 
 
@@ -166,35 +163,15 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	for counter in range(_iterN):
 		dJ, J = iterBackprop(_an, _lrnCoef, [[1, 1], [1, 0], [0, 1], [0, 0]], [0, 1, 1, 0])
 		if _mode == 'verbose':
-			print(counter, dJ, _an.A, _an.u, J)
+			print(counter, dJ, J)
 	return
 
 
-"""
-L0 = [AN(2, 0), AN(2, 0)]
-L1 = [AN(2, 0)]
-_lrnCoef = 0.1
-X0 = [1, 1]
-X1 = [L0[0].Y(X0), L0[1].Y(X0)]
-print(L1[0].A, L1[0].u)
-dJ, J = iterBackprop(L1[0], _lrnCoef, [X1], [0])
-print(L1[0].A, L1[0].u)
-"""
+x = ANN(AN(2,0), 2, 2, [3, 3])
+a, b = iterBackprop(x, 0.1, [[1, 1], [1, 0]], [[0, 1], [0, 0]])
+backprop(x, 0.1, 20, 'verbose')
 
-"""
-def some_loops(A1, A2, B1, B2, fn):
-    for a in [A1, A2]:
-        do_something_1()
-
-        for b in [B1, B2]:
-            fn()
-
-some_loops(A1, A2, B1, B2, do_something_2)
-some_loops(A1, A2, B1, B2, do_something_different_2)
-"""
-
-
-x = ANN(AN(2,0), 2, 3, [4, 3])
-#print(x.an.u)
-#print(x.lst[0][0].A)
-x.Y([1, 0.8])
+#
+# functions gradJ and iterBackprop were design for a single neuron, thus a single output.
+# they must be addapted layer-wise, instead of neuron-wise as it currently is.
+#
