@@ -107,6 +107,27 @@ class ANN:
 			Kin = lstY[counter1]
 		return lstY
 
+	def getA(self):
+		lstA = []
+		lenKN = len(self.lst)
+		for counter1 in range(lenKN):
+			lstA.append([])
+			lenK = len(self.lst[counter1])
+			for counter2 in range(lenK):
+				lstA[counter1].append(self.lst[counter1][counter2].A)
+		return lstA
+
+	def getu(self):
+		lstu = []
+		lenKN = len(self.lst)
+		for counter1 in range(lenKN):
+			lstu.append([])
+			lenK = len(self.lst[counter1])
+			for counter2 in range(lenK):
+				lstu[counter1].append(self.lst[counter1][counter2].u)
+		return lstu
+
+
 
 def gradJ(_lst, _X, _hatY):
 	hatY = array(_hatY)
@@ -168,10 +189,9 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 
 
 x = ANN(AN(2,0), 2, 2, [3, 3])
-a, b = iterBackprop(x, 0.1, [[1, 1], [1, 0]], [[0, 1], [0, 0]])
-backprop(x, 0.1, 20, 'verbose')
-
-#
-# functions gradJ and iterBackprop were design for a single neuron, thus a single output.
-# they must be addapted layer-wise, instead of neuron-wise as it currently is.
-#
+print(x.getu())
+a, b = iterBackprop(x, 0.1, [[1, 1]], [0, 0]) #, [1, 0]], [[0, 1], [0, 0]])
+print(x.getu())
+a, b = iterBackprop(x, 0.1, [[1, 1]], [0, 0]) #, [1, 0]], [[0, 1], [0, 0]])
+#backprop(x, 0.1, 20, 'verbose')
+print(x.getu())
