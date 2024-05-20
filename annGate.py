@@ -8,10 +8,8 @@ class AN:
 		self.N = _N				#number of input entries
 		self.A = 0.5 * ones(_N)	#array of zeros as default weights
 		self.u = 0.5			#bias = 0 as default
-		self.t = zeros(2)		#trigger thresholds activate & deactivate
 
-	def f(self, _z = None, _rate = 1, _zone = [0, 1, 2], _target = 'y'):
-		if _z is None: _z = self.z
+	def f(self, _z, _rate = 1, _zone = [0, 1, 2], _target = 'y'):
 		y = 0
 		if _z > _zone[0]:
 			y = _rate * _z
@@ -25,24 +23,9 @@ class AN:
 		return y
 
 	def Y(self, _X):
-		self.z = dot(self.A, array(_X)) + self.u
-		y = self.f()
+		z = dot(self.A, array(_X)) + self.u
+		y = self.f(z)
 		return y
-
-	def setA(self, _A):
-		arrA = array(_A)
-		retCode = 0
-		if (arrA.ndim == 1) and (arrA.shape == self.A.shape):
-			self.A = arrA
-			retCode = 1
-		return retCode
-
-	def setu(self, _u):
-		retCode = 0
-		if isinstance(_u, int) or isinstance(_u, float):
-			self.u = _u
-			retCode = 1
-		return retCode
 
 
 class ANN:
@@ -108,35 +91,23 @@ class ANN:
 			lstY.append([])
 			lenK = len(self.lst[counter1])
 			for counter2 in range(lenK):
-				lstY[counter1].append(self.lst[counter1][counter2].Y(Kin))
+				_obj = self.lst[counter1][counter2]
+				_val = getattr(_obj, 'Y')(Kin)
+				lstY[counter1].append(_val)
 			Kin = lstY[counter1]
 		return lstY
 
-	def lstGet(self, _target='u'):
-		counter1, counter2 = 0, 0
-		_obj = self.lst[counter1][counter2]
-		x = getattr(_obj, _target)
-		return x
-
-	def getA(self):
-		lstA = []
+	def lstGet(self, _target = 'A'):
+		_lst = []
 		lenKN = len(self.lst)
 		for counter1 in range(lenKN):
-			lstA.append([])
+			_lst.append([])
 			lenK = len(self.lst[counter1])
 			for counter2 in range(lenK):
-				lstA[counter1].append(self.lst[counter1][counter2].A)
-		return lstA
-
-	def getu(self):
-		lstu = []
-		lenKN = len(self.lst)
-		for counter1 in range(lenKN):
-			lstu.append([])
-			lenK = len(self.lst[counter1])
-			for counter2 in range(lenK):
-				lstu[counter1].append(self.lst[counter1][counter2].u)
-		return lstu
+				_obj = self.lst[counter1][counter2]
+				_val = getattr(_obj, _target)
+				_lst[counter1].append(_val)
+		return _lst
 
 
 def gradJ(_lst, _X, _hatY):
@@ -159,7 +130,7 @@ def gradJ(_lst, _X, _hatY):
 
 def iterBackprop(_lst, _lrnCoef, _lstX, _lstHatY):
 	lenK = len(_lst.lst[-1])
-	_A = [_lst.lst[-1][i].A for i in range(lenK)] #_lst.lst[-1][0].A
+	_A = [_lst.lst[-1][i].A for i in range(lenK)]
 	_u = [_lst.lst[-1][i].u for i in range(lenK)]
 	dJ = zeros([lenK, _lst.lst[-1][0].N+1])
 	J = 0
@@ -171,9 +142,10 @@ def iterBackprop(_lst, _lrnCoef, _lstX, _lstHatY):
 	_A -= _lrnCoef * array([i[:-1] for i in dJ])
 	_u -= _lrnCoef * array([i[ -1] for i in dJ])
 	for counter in range(lenK):
-		foo = _lst.lst[-1][counter].setA(_A[counter])
-		foo = _lst.lst[-1][counter].setu(_u[counter])
-	_A = [_lst.lst[-1][i].A for i in range(lenK)] #_lst.lst[-1][0].A
+		w = _lst.lst[-1][counter]
+		setattr(w, 'A', _A[counter])
+		setattr(w, 'u', _u[counter])
+	_A = [_lst.lst[-1][i].A for i in range(lenK)]
 	return dJ, J
 
 def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
@@ -191,12 +163,3 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 #print(x.getu())
 
 n = ANN(AN(2), 2, 2, [3, 3])
-v = getattr(n, 'lst')
-w = v[0][0]
-v = getattr(w, 'A')
-print(v)
-v = setattr(w, 'A', array([1, .8]))
-v = getattr(w, 'A')
-print(v)
-
-print(n.lstGet())
