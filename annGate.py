@@ -4,23 +4,29 @@ from numpy import ones, zeros, array, dot, ndarray
 
 class AN:
 
-	def __init__(self, _N, _mode = 1):
+	def __init__(self, _N):
 		self.N = _N				#number of input entries
 		self.A = 0.5 * ones(_N)	#array of zeros as default weights
 		self.u = 0.5			#bias = 0 as default
 		self.t = zeros(2)		#trigger thresholds activate & deactivate
-		self.mode = _mode		#activation function behaviour
+
+	def f(self, _z = None, _rate = 1, _zone = [0, 1, 2], _target = 'y'):
+		if _z is None: _z = self.z
+		y = 0
+		if _z > _zone[0]:
+			y = _rate * _z
+			if _target == 'dJ': y = _rate
+		if _zone[1] is None: return y
+		if _z > _zone[1]:
+			y = 2 * _rate - _z
+			if _target == 'dJ': y = -_rate
+		if _z > _zone[2]:
+			y = 0	
+		return y
 
 	def Y(self, _X):
 		self.z = dot(self.A, array(_X)) + self.u
-		y = 0
-		if self.z > 0:
-			y = self.z
-		if self.mode == 1:
-			if self.z > 1:
-				y = 2 - self.z
-			if self.z > 2:
-				y = 0
+		y = self.f()
 		return y
 
 	def setA(self, _A):
@@ -42,7 +48,7 @@ class AN:
 class ANN:
 
 	def __init__(self, _an, _in, _out, _KN):
-		# KN dimension is the number of layers - 1.
+		#1 KN dimension is the number of layers - 1.
 		# the last layer is defined by previous and the number of output signals
 		retCode = 1 #assume failure by default
 		#elementary tests
@@ -69,7 +75,6 @@ class ANN:
 			retCode = 0
 		if retCode != 1:
 			return retCode
-
 		#ANN building as list of lists of AN class instances
 		lstANN = []
 		lenKN = len(self.arrKN)
@@ -107,6 +112,12 @@ class ANN:
 			Kin = lstY[counter1]
 		return lstY
 
+	def lstGet(self, _target='u'):
+		counter1, counter2 = 0, 0
+		_obj = self.lst[counter1][counter2]
+		x = getattr(_obj, _target)
+		return x
+
 	def getA(self):
 		lstA = []
 		lenKN = len(self.lst)
@@ -128,7 +139,6 @@ class ANN:
 		return lstu
 
 
-
 def gradJ(_lst, _X, _hatY):
 	hatY = array(_hatY)
 	lstY = _lst.Y(_X)
@@ -141,24 +151,11 @@ def gradJ(_lst, _X, _hatY):
 	dJ = zeros([Nk, Nin+1])
 	for counter1 in range(Nk):
 		for counter2 in range(Nin):
-			dJ[counter1][counter2] = 0 #assumes activation function is a ramp, not an identity function.
-			if _lst.lst[-1][counter1].z > 0:
-				dJ[counter1][counter2] =  2 * e[counter1] * 1 * lyrX[counter2]
-			if _lst.lst[-1][counter1].mode == 1: #assumes activation function is a tri, not a ramp.
-				if _lst.lst[-1][counter1].z > 1:
-					dJ[counter1][counter2] = 2 * e[counter1] * (-1) * lyrX[counter2]
-				if _lst.lst[-1][counter1].z > 2:
-					dJ[counter1][counter2] = 0
-		dJ[counter1][-1] = 0
-		if _lst.lst[-1][counter1].z > 0:
-			dJ[counter1][-1] =  2 * e[counter1] * 1
-		if _lst.lst[-1][counter1].mode == 1:
-			if _lst.lst[-1][counter1].z > 1:
-				dJ[counter1][-1] = 2 * e[counter1] * (-1)
-			if _lst.lst[-1][counter1].z > 2:
-				dJ[counter1][-1] = 0
+			dJ[counter1][counter2]  = _lst.lst[-1][counter1].f(_target = 'dJ')
+			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]
+		dJ[counter1][-1]  = _lst.lst[-1][counter1].f(_target = 'dJ')
+		dJ[counter1][-1] *= 2 * e[counter1] * 1
 	return dJ, dot(e, e)
-
 
 def iterBackprop(_lst, _lrnCoef, _lstX, _lstHatY):
 	lenK = len(_lst.lst[-1])
@@ -179,7 +176,6 @@ def iterBackprop(_lst, _lrnCoef, _lstX, _lstHatY):
 	_A = [_lst.lst[-1][i].A for i in range(lenK)] #_lst.lst[-1][0].A
 	return dJ, J
 
-
 def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	for counter in range(_iterN):
 		dJ, J = iterBackprop(_an, _lrnCoef, [[1, 1], [1, 0], [0, 1], [0, 0]], [0, 1, 1, 0])
@@ -188,10 +184,19 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	return
 
 
-x = ANN(AN(2,0), 2, 2, [3, 3])
-print(x.getu())
-a, b = iterBackprop(x, 0.1, [[1, 1]], [0, 0]) #, [1, 0]], [[0, 1], [0, 0]])
-print(x.getu())
-a, b = iterBackprop(x, 0.1, [[1, 1]], [0, 0]) #, [1, 0]], [[0, 1], [0, 0]])
-#backprop(x, 0.1, 20, 'verbose')
-print(x.getu())
+#x = ANN(AN(2), 2, 2, [3, 3])
+#print(x.getA())
+#print(x.lstGet(x))
+
+#print(x.getu())
+
+n = ANN(AN(2), 2, 2, [3, 3])
+v = getattr(n, 'lst')
+w = v[0][0]
+v = getattr(w, 'A')
+print(v)
+v = setattr(w, 'A', array([1, .8]))
+v = getattr(w, 'A')
+print(v)
+
+print(n.lstGet())
