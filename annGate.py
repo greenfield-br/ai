@@ -9,16 +9,20 @@ class AN:
 		self.A = 0.5 * ones(_N)	#array of zeros as default weights
 		self.u = 0.5			#bias = 0 as default
 
-	def f(self, _z, _rate = 1, _zone = [0, 1, 2], _target = 'y'):
+	def f(self, _arg=None, _rate=1, _zone=[0, 1], _target='y'):
+		_z = 0
+		if isinstance(_arg, int):   _z = _arg								#either z is given as parameter
+		if isinstance(_arg, float): _z = _arg								
+		if isinstance(_arg, list):  _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
 		y = 0
 		if _z > _zone[0]:
-			y = _rate * _z
+			y = _rate * (_z - _zone[0])
 			if _target == 'dJ': y = _rate
 		if _zone[1] is None: return y
 		if _z > _zone[1]:
-			y = 2 * _rate - _z
+			y = 2 * _rate * (_zone[1] - _zone[0]) - (_z - _zone[0])
 			if _target == 'dJ': y = -_rate
-		if _z > _zone[2]:
+		if _z > 2 * _rate * (_zone[1] - _zone[0]) + _zone[0]:
 			y = 0	
 		return y
 
@@ -122,9 +126,9 @@ def gradJ(_lst, _X, _hatY):
 	dJ = zeros([Nk, Nin+1])
 	for counter1 in range(Nk):
 		for counter2 in range(Nin):
-			dJ[counter1][counter2]  = _lst.lst[-1][counter1].f(_target = 'dJ')
-			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]
-		dJ[counter1][-1]  = _lst.lst[-1][counter1].f(_target = 'dJ')
+			dJ[counter1][counter2]  = _lst.lst[-1][counter1].f(_X, _target = 'dJ')	#f() derivative
+			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]				#dJ module
+		dJ[counter1][-1]  = _lst.lst[-1][counter1].f(_X, _target = 'dJ')
 		dJ[counter1][-1] *= 2 * e[counter1] * 1
 	return dJ, dot(e, e)
 
@@ -156,10 +160,6 @@ def backprop(_an, _lrnCoef, _iterN, _mode = 'silent'):
 	return
 
 
-#x = ANN(AN(2), 2, 2, [3, 3])
-#print(x.getA())
-#print(x.lstGet(x))
-
-#print(x.getu())
-
-n = ANN(AN(2), 2, 2, [3, 3])
+x = AN(2)
+y = x.Y(0.3)
+print(y)
