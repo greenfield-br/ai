@@ -11,9 +11,10 @@ class AN:
 
 	def f(self, _arg=None, _rate=1, _zone=[0, 1], _target='y'):
 		_z = 0
-		if isinstance(_arg, int):   _z = _arg								#either z is given as parameter
-		if isinstance(_arg, float): _z = _arg								
-		if isinstance(_arg, list):  _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
+		if isinstance(_arg, int):     _z = _arg									#either z is given as parameter
+		if isinstance(_arg, float):   _z = _arg							
+		if isinstance(_arg, list):    _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
+		if isinstance(_arg, ndarray): _z = dot(self.A, array(_arg)) + self.u
 		y = 0
 		if _z > _zone[0]:
 			y = _rate * (_z - _zone[0])
@@ -23,7 +24,7 @@ class AN:
 			y = 2 * _rate * (_zone[1] - _zone[0]) - (_z - _zone[0])
 			if _target == 'dJ': y = -_rate
 		if _z > 2 * _rate * (_zone[1] - _zone[0]) + _zone[0]:
-			y = 0	
+			y = 0
 		return y
 
 	def Y(self, _X):
@@ -116,9 +117,9 @@ class ANN:
 
 def gradJ(_ann, _X, _hatY):
 	hatY = array(_hatY)
-	lstY = _ann.Y(_X) #feedforward input
-	lyrX = array(lstY[-2]) #input values are outputs of previous layer
-	lyrY = array(lstY[-1]) #output is current layer neuron output list
+	lstY = _ann.Y(_X)		#feedforward input
+	lyrX = array(lstY[-2])	#input values are outputs of previous layer
+	lyrY = array(lstY[-1])	#output is current layer neuron output list
 	e = lyrY - hatY
 	lenK = len(lstY)
 	Nin = len(lyrX)
@@ -126,14 +127,16 @@ def gradJ(_ann, _X, _hatY):
 	dJ = zeros([Nk, Nin+1])
 	for counter1 in range(Nk):
 		for counter2 in range(Nin):
-			dJ[counter1][counter2]  = _ann.lst[-1][counter1].f(_X, _target = 'dJ')	#f() derivative
-			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]				#dJ module
-		dJ[counter1][-1]  = _ann.lst[-1][counter1].f(_X, _target = 'dJ')
+			dJ[counter1][counter2]  = _ann.lst[-1][counter1].f(lyrX, _target = 'dJ')	#f() derivative
+			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]					#dJ module
+		dJ[counter1][-1]  = _ann.lst[-1][counter1].f(lyrX, _target = 'dJ')
 		dJ[counter1][-1] *= 2 * e[counter1] * 1
 	return dJ, dot(e, e)
 
+
+
 def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
-	lenK = len(_ann.lst[-1]) #number of neurons on output layer
+	lenK = len(_ann.lst[-1])						#number of neurons on output layer
 	_A = [_ann.lst[-1][i].A for i in range(lenK)]
 	_u = [_ann.lst[-1][i].u for i in range(lenK)]
 	dJ = zeros([lenK, _ann.lst[-1][0].N+1])
@@ -154,13 +157,21 @@ def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
 
 def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
 	for counter in range(_iterN):
-		dJ, J = iterBackprop(_ann, _lrnCoef, [[1, 1], [1, 0], [0, 1], [0, 0]], [0, 1, 1, 0])
+		dJ, J = iterBackprop(_ann, _lrnCoef, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]])
 		if _mode == 'verbose':
 			print(counter, dJ, J)
 	return
 
 
-x = ANN(AN(2), 2, 1, [2])
-backprop(x, 0.1, 9, 'verbose')
-
-#conferir com o excel
+x = ANN(AN(2), 2, 2, [3, 3])
+#a = x.Y([1, 1])
+#b = x.lstGet('A')
+#a, b = gradJ(x, [1, 1], [0, 1])
+a, b = iterBackprop(x, 0.1, [[1, 1]], [[0, 1]])
+print(a)
+print(b)
+print(x.lstGet('u'))
+a, b = iterBackprop(x, 0.1, [[1, 1]], [[0, 1]])
+print(a)
+print(b)
+print(x.lstGet('u'))
