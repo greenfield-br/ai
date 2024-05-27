@@ -114,32 +114,7 @@ class ANN:
 				_lst[counter1].append(_val)
 		return _lst
 
-def gradJ(_ann, _X, _hatY, _k=1):
-	n = _ann.KN
-	lenKN = len(n)
-	dJ = zeros([n[-2]+1, n[-1]])
-	lyrX = _ann.Y(_X)[-2]
-	for counter1 in range(n[-2]):
-		err = zeros(n[-1])	#error line vector
-		cnt = eye(n[-1])	#connector diagonal matrix
-		for counter2 in range(n[-1]):
-			err[counter2]           = _ann.lst[-1][counter2].Y(lyrX) - _hatY[counter2]
-			cnt[counter2][counter2] = _ann.lst[-1][counter2].f(lyrX, target='dJ')
-		dJ[counter1] = 2 * dot(err, cnt) * lyrX[counter1]
-	err = zeros(n[-1])	#error line vector
-	cnt = eye(n[-1])	#connector diagonal matrix
-	for counter2 in range(n[-1]):
-		err[counter2]           = _ann.lst[-1][counter2].Y(lyrX) - _hatY[counter2]
-		cnt[counter2][counter2] = _ann.lst[-1][counter2].f(lyrX, target='dJ')
-	dJ[-1] = 2 * dot(err, cnt) * 1
-	return dJ, dot(err, err)
-
-# gradJ vai rodar em 1 única camada por chamada.
-# a varredura deverá ser coordenada por iterBackprop
-# logo gradJ deve ser informado da camada alvo.
-
-
-def iterBackprop(_ann, _X, _hatY):
+def gradJ(_ann, _X, _hatY):
 	n = _ann.KN
 	lenKN = len(n)
 	lstGradJ = [[]] * lenKN
@@ -147,38 +122,31 @@ def iterBackprop(_ann, _X, _hatY):
 	arrLyr = zeros(n[-1])
 	arrCnt = eye(n[-1])
 	lstY = _ann.Y(_X)
-	lyrX = _X
+	lyrX = _X	#vdefault value in case this is the first layer.
 	if lenKN > 1: lyrX = lstY[-2]
 	for count in range(n[-1]):
-		arrLyr[count]		 = 2 * (_ann.lst[-1][count].Y(lyrX) - _hatY[count])
-		arrCnt[count][count] =      _ann.lst[-1][count].f(lyrX, target='dJ')
+		arrLyr[count] = 2 * (lstY[-1][count] - _hatY[count])
+		arrCnt[count][count] = _ann.lst[-1][count].f(lyrX, target='dJ')
 	lstGradJ[0] = dot(arrLyr, arrCnt)
 	
-	if lenKN > 1:
-		arrLyr = zeros([n[-1], n[-2]])
-		arrCnt = eye(n[-2])
-		lyrX = _X
-		if lenKN > 2: lyrX = lstY[-3]
-		dJ = zeros([n[-1], n[-2]])
-		for count in range(n[-1]):
-			arrLyr[count] = _ann.lst[-1][count].A
-		for count in range(n[-2]):
-			arrCnt[count][count] = _ann.lst[-2][count].f(lyrX, target='dJ')
-		lstGradJ[1] = dot(arrLyr, arrCnt)
-	
-	if lenKN > 2:
-		arrLyr = zeros([n[-2], n[-3]])
-		arrCnt = eye(n[-3])
-		lyrX = _X
-		if lenKN > 3: lyrX = lstY[-4]
-		dJ = zeros([n[-2], n[-3]])
-		for count in range(n[-2]):
-			arrLyr[count] = _ann.lst[-2][count].A
-		for count in range(n[-3]):
-			arrCnt[count][count] = _ann.lst[-3][count].f(lyrX, target='dJ')
-		lstGradJ[2] = dot(arrLyr, arrCnt)
+	for count1 in range(1, lenKN+1):
+		if lenKN > count1:
+			arrLyr = zeros([n[-count1], n[-(count1+1)]])
+			arrCnt = eye(n[-(count1+1)])
+			lyrX = _X
+			if lenKN > (count1+1): lyrX = lstY[-(count1+2)]
+			for count2 in range(n[-count1]):
+				arrLyr[count2] = _ann.lst[-count1][count2].A
+			for count2 in range(n[-(count1+1)]):
+				arrCnt[count2][count2] = _ann.lst[-(count1+1)][count2].f(lyrX, target='dJ')
+			lstGradJ[count1] = dot(arrLyr, arrCnt)
 
-	return lstGradJ
+	dJ = lstGradJ[0]
+	lenLstGradJ = len(lstGradJ)
+	for count in range(1, lenLstGradJ):
+		print(count, lenLstGradJ)
+		dJ = dot(dJ, lstGradJ[count])
+	return dJ
 
 def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
 	for counter in range(_iterN):
@@ -189,7 +157,5 @@ def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
 
 
 x = ANN(AN(2), 2, 2, [3, 3])
-y = iterBackprop(x, [1, 1], [0, 1])
-z = dot(y[0],y[1])
-w = dot(z, y[2])
-print(w)
+y = gradJ(x, [1, 1], [0, 1])
+print(y)
