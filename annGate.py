@@ -1,5 +1,5 @@
 #XOR gate
-from numpy import ones, zeros, array, dot, ndarray
+from numpy import ones, zeros, array, dot, ndarray, eye
 
 
 class AN:
@@ -9,20 +9,19 @@ class AN:
 		self.A = 0.5 * ones(_N)	#array of zeros as default weights
 		self.u = 0.5			#bias = 0 as default
 
-	def f(self, _arg=None, _rate=1, _zone=[0, 1], _target='y'):					#_target = dJ, means you're on a backprop. output is f'(z)
+	def f(self, _arg=None, _rate=1, _zone=[0, 1], target='y'):					#target = dJ, means you're on a backprop. output is f'(z)
 		_z = 0																	#		 = y , means you are evaluating current output 
 		if isinstance(_arg, int):     _z = _arg									#either z is given as parameter
 		if isinstance(_arg, float):   _z = _arg							
 		if isinstance(_arg, list):    _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
 		if isinstance(_arg, ndarray): _z = dot(self.A, _arg) + self.u
-		y = 0
 		if _z > _zone[0]:
 			y = _rate * (_z - _zone[0])
-			if _target == 'dJ': y = _rate
+			if target == 'dJ': y = _rate
 		if _zone[1] is None: return y
 		if _z > _zone[1]:
 			y = 2 * _rate * (_zone[1] - _zone[0]) - (_z - _zone[0])
-			if _target == 'dJ': y = -_rate
+			if target == 'dJ': y = -_rate
 		if _z > 2 * _rate * (_zone[1] - _zone[0]) + _zone[0]:
 			y = 0
 		return y
@@ -91,7 +90,7 @@ class ANN:
 		if retCode != 1:
 			return retCode
 		lstY = []
-		lenKN = len(self.lst)
+		lenKN = len(self.KN)
 		Kin = _IN
 		for counter1 in range(lenKN):
 			lstY.append([])
@@ -103,56 +102,83 @@ class ANN:
 			Kin = lstY[counter1]
 		return lstY
 
-	def lstGet(self, _target = 'A'): #valid for class properties, not methods.
+	def lstGet(self, target = 'A'): #valid for class properties, not methods.
 		_lst = []
-		lenKN = len(self.lst)
+		lenKN = len(self.KN)
 		for counter1 in range(lenKN):
 			_lst.append([])
 			lenK = len(self.lst[counter1])
 			for counter2 in range(lenK):
 				_obj = self.lst[counter1][counter2]
-				_val = getattr(_obj, _target)
+				_val = getattr(_obj, target)
 				_lst[counter1].append(_val)
 		return _lst
 
+def gradJ(_ann, _X, _hatY, _k=1):
+	n = _ann.KN
+	lenKN = len(n)
+	dJ = zeros([n[-2]+1, n[-1]])
+	lyrX = _ann.Y(_X)[-2]
+	for counter1 in range(n[-2]):
+		err = zeros(n[-1])	#error line vector
+		cnt = eye(n[-1])	#connector diagonal matrix
+		for counter2 in range(n[-1]):
+			err[counter2]           = _ann.lst[-1][counter2].Y(lyrX) - _hatY[counter2]
+			cnt[counter2][counter2] = _ann.lst[-1][counter2].f(lyrX, target='dJ')
+		dJ[counter1] = 2 * dot(err, cnt) * lyrX[counter1]
+	err = zeros(n[-1])	#error line vector
+	cnt = eye(n[-1])	#connector diagonal matrix
+	for counter2 in range(n[-1]):
+		err[counter2]           = _ann.lst[-1][counter2].Y(lyrX) - _hatY[counter2]
+		cnt[counter2][counter2] = _ann.lst[-1][counter2].f(lyrX, target='dJ')
+	dJ[-1] = 2 * dot(err, cnt) * 1
+	return dJ, dot(err, err)
 
-def gradJ(_ann, _X, _hatY):
-	hatY = array(_hatY)
-	lstY = _ann.Y(_X)		#feedforward input
-	lyrX = array(lstY[-2])	#input values are outputs of previous layer
-	lyrY = array(lstY[-1])	#output is current layer neuron output list
-	e = lyrY - hatY
-	lenK = len(lstY)
-	Nin = len(lyrX)
-	Nk = len(lyrY)
-	dJ = zeros([Nk, Nin+1])
-	for counter1 in range(Nk):
-		for counter2 in range(Nin):
-			dJ[counter1][counter2]  = _ann.lst[-1][counter1].f(lyrX, _target = 'dJ')	#f() derivative
-			dJ[counter1][counter2] *= 2 * e[counter1] * lyrX[counter2]					#dJ module
-		dJ[counter1][-1]  = _ann.lst[-1][counter1].f(lyrX, _target = 'dJ')
-		dJ[counter1][-1] *= 2 * e[counter1] * 1
-	return dJ, dot(e, e)
+# gradJ vai rodar em 1 única camada por chamada.
+# a varredura deverá ser coordenada por iterBackprop
+# logo gradJ deve ser informado da camada alvo.
 
-def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
-	lenK = len(_ann.lst[-1])						#number of neurons on output layer
-	_A = [_ann.lst[-1][i].A for i in range(lenK)]
-	_u = [_ann.lst[-1][i].u for i in range(lenK)]
-	dJ = zeros([lenK, _ann.lst[-1][0].N+1])
-	J = 0
-	lenLstX = len(_lstX)
-	for counter in range(lenLstX):
-		[dj, j] = gradJ2(_ann, _lstX[counter], _lstHatY[counter])
-		dJ += dj
-		J  += j
-	dJ /= lenLstX
-	_A -= _lrnCoef * array([i[:-1] for i in dJ])
-	_u -= _lrnCoef * array([i[ -1] for i in dJ])
-	for counter in range(lenK):
-		w = _ann.lst[-1][counter]
-		setattr(w, 'A', _A[counter])
-		setattr(w, 'u', _u[counter])
-	return dJ, J
+
+def iterBackprop(_ann, _X, _hatY):
+	n = _ann.KN
+	lenKN = len(n)
+	lstGradJ = [[]] * lenKN
+
+	arrLyr = zeros(n[-1])
+	arrCnt = eye(n[-1])
+	lstY = _ann.Y(_X)
+	lyrX = _X
+	if lenKN > 1: lyrX = lstY[-2]
+	for count in range(n[-1]):
+		arrLyr[count]		 = 2 * (_ann.lst[-1][count].Y(lyrX) - _hatY[count])
+		arrCnt[count][count] =      _ann.lst[-1][count].f(lyrX, target='dJ')
+	lstGradJ[0] = dot(arrLyr, arrCnt)
+	
+	if lenKN > 1:
+		arrLyr = zeros([n[-1], n[-2]])
+		arrCnt = eye(n[-2])
+		lyrX = _X
+		if lenKN > 2: lyrX = lstY[-3]
+		dJ = zeros([n[-1], n[-2]])
+		for count in range(n[-1]):
+			arrLyr[count] = _ann.lst[-1][count].A
+		for count in range(n[-2]):
+			arrCnt[count][count] = _ann.lst[-2][count].f(lyrX, target='dJ')
+		lstGradJ[1] = dot(arrLyr, arrCnt)
+	
+	if lenKN > 2:
+		arrLyr = zeros([n[-2], n[-3]])
+		arrCnt = eye(n[-3])
+		lyrX = _X
+		if lenKN > 3: lyrX = lstY[-4]
+		dJ = zeros([n[-2], n[-3]])
+		for count in range(n[-2]):
+			arrLyr[count] = _ann.lst[-2][count].A
+		for count in range(n[-3]):
+			arrCnt[count][count] = _ann.lst[-3][count].f(lyrX, target='dJ')
+		lstGradJ[2] = dot(arrLyr, arrCnt)
+
+	return lstGradJ
 
 def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
 	for counter in range(_iterN):
@@ -162,50 +188,8 @@ def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
 	return
 
 
-
-#x = ANN(AN(2), 2, 2, [3, 3])
-
-#
-# need to rewrite gradJ according to matricial structure.
-#
-
-def gradJ2(_ann, _X, _hatY, _k=1):
-	hatY = array(_hatY)
-	lstY = _ann.Y(_X)		#feedforward input
-	lyrX = array(lstY[-2])	#input values are outputs of previous layer
-	lyrY = array(lstY[-1])	#output is current layer neuron output list
-	e = lyrY - hatY
-	lenK = len(lstY)
-	Nin = len(lyrX)
-	Nk = len(lyrY)
-	dJ = zeros([Nk, Nin+1])
-	
-	#rewrite this for loop where lyrX[i] is the split point for parallelization, thus
-	#rewrite it for looping over all the layer neurons under the same input parameter, and then
-	#               looping over all the layer neurons under other    input parameter.
-	for counter1 in range(Nin):
-		for counter2 in range(Nk):
-			dJ[counter2][counter1]  = _ann.lst[-1][counter2].f(lyrX, _target='dJ')	#f() derivative
-			dJ[counter2][counter1] *= 2 * e[counter2] * lyrX[counter1]					#dJ module
-	for counter in range(Nk):
-		dJ[counter][-1]  = _ann.lst[-1][counter].f(lyrX, _target='dJ')
-		dJ[counter][-1] *= 2 * e[counter] * 1
-	return dJ, dot(e, e)
-
 x = ANN(AN(2), 2, 2, [3, 3])
-y = x.Y([1, 1])
-print(y)
-
-a, b = iterBackprop(x, 0.1, [[1, 1]], [[0, 1]])
-print(a)
-print(b)
-y = x.Y([1, 1])
-print(y)
-
-a, b = iterBackprop(x, 0.1, [[1, 1]], [[0, 1]])
-print(a)
-print(b)
-y = x.Y([1, 1])
-print(y)
-
-#now i need to check again against google sheet.
+y = iterBackprop(x, [1, 1], [0, 1])
+z = dot(y[0],y[1])
+w = dot(z, y[2])
+print(w)
