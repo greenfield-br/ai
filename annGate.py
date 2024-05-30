@@ -1,5 +1,5 @@
 #XOR gate
-from numpy import ones, zeros, array, dot, ndarray, eye
+from numpy import ones, zeros, array, dot, ndarray, eye, multiply
 
 
 class AN:
@@ -15,6 +15,7 @@ class AN:
 		if isinstance(_arg, float):   _z = _arg							
 		if isinstance(_arg, list):    _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
 		if isinstance(_arg, ndarray): _z = dot(self.A, _arg) + self.u
+		y = 0
 		if _z > _zone[0]:
 			y = _rate * (_z - _zone[0])
 			if target == 'dJ': y = _rate
@@ -114,10 +115,11 @@ class ANN:
 				_lst[counter1].append(_val)
 		return _lst
 
-def gradJ(_ann, _X, _hatY):
+def gradJ(_ann, _k, _X, _hatY):
 	n = _ann.KN
 	lenKN = len(n)
-	lstGradJ = [[]] * lenKN
+	if _k > lenKN: _k = lenKN
+	lstGradJ = [[]] * _k
 
 	arrLyr = zeros(n[-1])
 	arrCnt = eye(n[-1])
@@ -128,9 +130,9 @@ def gradJ(_ann, _X, _hatY):
 		arrLyr[count] = 2 * (lstY[-1][count] - _hatY[count])
 		arrCnt[count][count] = _ann.lst[-1][count].f(lyrX, target='dJ')
 	lstGradJ[0] = dot(arrLyr, arrCnt)
-	
-	for count1 in range(1, lenKN+1):
-		if lenKN > count1:
+	#in case dJ is ran on a layer before the last one. assumes it ran already on the last one.
+	if _k > 1:
+		for count1 in range(1, _k):
 			arrLyr = zeros([n[-count1], n[-(count1+1)]])
 			arrCnt = eye(n[-(count1+1)])
 			lyrX = _X
@@ -140,22 +142,71 @@ def gradJ(_ann, _X, _hatY):
 			for count2 in range(n[-(count1+1)]):
 				arrCnt[count2][count2] = _ann.lst[-(count1+1)][count2].f(lyrX, target='dJ')
 			lstGradJ[count1] = dot(arrLyr, arrCnt)
-
-	dJ = lstGradJ[0]
+	#build proper lstGradJ expression by multiplying each layer component.
 	lenLstGradJ = len(lstGradJ)
+	dj = lstGradJ[0]
 	for count in range(1, lenLstGradJ):
-		print(count, lenLstGradJ)
-		dJ = dot(dJ, lstGradJ[count])
+		dj = dot(dj, lstGradJ[count])
+	#replicates lstGradJ by each input signal element to build dJ vector
+	lenX = len(lyrX)
+	dJ = []
+	for count in range(lenX):
+		dJ.append(array(dj) * lyrX[count])
+	dJ.append(array(dj) * 1)
+	dJ = array(dJ)
 	return dJ
 
-def backprop(_ann, _lrnCoef, _iterN, _mode = 'silent'):
-	for counter in range(_iterN):
-		dJ, J = iterBackprop(_ann, _lrnCoef, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]])
-		if _mode == 'verbose':
-			print(counter, dJ, J)
-	return
+def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
+	n = _ann.KN
+	lenKN = len(n)
+	lenLstX = len(_lstX)
+	lenLstY = len(_lstHatY)
+	minLen = min(lenLstX, lenLstY)
+	_lstX = _lstX[:minLen]
+	_lstHatY = _lstHatY[:minLen]
+	lenLstX = len(_lstX)
+
+	#averages dJ over all input output pairs at k-th layer
+	for count1 in range(1, lenKN+1):
+		dJ = gradJ(_ann, count1, _lstX[0], _lstHatY[0])
+		for count2 in range(1, lenLstX):
+			dJ += gradJ(_ann, count1, _lstX[count2], _lstHatY[count2])
+		dJ /= lenLstX
+		
+		nk = n[-count1]
+		lenDJ = len(dJ)
+		for count2 in range(nk):
+			#extract dj for new coefficients of each neuron on the k-th layer
+			dj = array([dJ[i][count2] for i in range(lenDJ)])
+			#updates (A, b) pair of each neuron on the k-th layer
+			_obj = _ann.lst[-count1][count2]
+			_val = getattr(_obj, 'A')
+			_val -= _lrnCoef * dj[:-1]
+			setattr(_obj, 'A', _val)
+			_val = getattr(_obj, 'u')
+			_val -= _lrnCoef * dj[-1]
+			setattr(_obj, 'u', _val)
+	return dJ
+
+def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
+	lenLstX = len(_lstX)
+	for count in range(_n):
+		J = 0
+		for count2 in range(lenLstX):
+			y = array(_ann.Y(_lstX[count2])[-1])
+			e = y - array(_lstHatY[count2])
+			e = dot(e, e)
+			J += e
+			J /= lenLstX			
+		dJ = iterBackprop(x, _lrnCoef, _lstX, _lstHatY)
+		print(J)
+	
+	for count in range(lenLstX):
+		y = array(_ann.Y(_lstX[count])[-1])
+		print(y, _lstHatY[count])
+
 
 
 x = ANN(AN(2), 2, 2, [3, 3])
-y = gradJ(x, [1, 1], [0, 1])
-print(y)
+backprop(x, 0.07, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]], 10)
+
