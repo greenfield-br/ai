@@ -10,7 +10,7 @@ class AN:
 		self.u = 0.5			#bias = 0 as default
 
 	def f(self, _arg=None, _rate=1, _zone=[0, 1], target='y'):					#target = dJ, means you're on a backprop. output is f'(z)
-		_z = 0																	#		 = y , means you are evaluating current output 
+		_z = 0																	#		= y , means you are evaluating current output 
 		if isinstance(_arg, int):     _z = _arg									#either z is given as parameter
 		if isinstance(_arg, float):   _z = _arg							
 		if isinstance(_arg, list):    _z = dot(self.A, array(_arg)) + self.u	#or it is calculated through _arg
@@ -172,7 +172,7 @@ def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
 		for count2 in range(1, lenLstX):
 			dJ += gradJ(_ann, count1, _lstX[count2], _lstHatY[count2])
 		dJ /= lenLstX
-		
+
 		nk = n[-count1]
 		lenDJ = len(dJ)
 		for count2 in range(nk):
@@ -208,5 +208,4 @@ def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
 
 
 x = ANN(AN(2), 2, 2, [3, 3])
-backprop(x, 0.07, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]], 10)
-
+backprop(x, 0.1, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]], 10)
