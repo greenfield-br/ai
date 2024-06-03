@@ -1,13 +1,14 @@
 #XOR gate
-from numpy import ones, zeros, array, dot, ndarray, eye, multiply
-
+from numpy import ones, zeros, array, dot, ndarray, eye, multiply, random, argmax
+from data import get_mnist
 
 class AN:
 
 	def __init__(self, _N):
 		self.N = _N				#number of input entries
-		self.A = 0.5 * ones(_N)	#array of zeros as default weights
-		self.u = 0.5			#bias = 0 as default
+		self.A = random.uniform(-0.2, 0.2, (1, _N))[0]
+		#self.A = 0.5 * ones(_N)	#array of zeros as default weights
+		self.u = 0 #random.uniform(0, 1, 1)[0]	#bias = 0 as default
 
 	def f(self, _arg=None, _rate=1, _zone=[0, 1], target='y'):					#target = dJ, means you're on a backprop. output is f'(z)
 		_z = 0																	#		= y , means you are evaluating current output 
@@ -121,8 +122,8 @@ def gradJ(_ann, _k, _X, _hatY):
 	if _k > lenKN: _k = lenKN
 	lstGradJ = [[]] * _k
 
-	arrLyr = zeros(n[-1])
-	arrCnt = eye(n[-1])
+	arrLyr = zeros(n[-1])	#each block consists of a pair of Layer AN coefficients,
+	arrCnt = eye(n[-1])		#and a connection f funcion diagonal matrix.
 	lstY = _ann.Y(_X)
 	lyrX = _X	#vdefault value in case this is the first layer.
 	if lenKN > 1: lyrX = lstY[-2]
@@ -175,6 +176,7 @@ def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
 
 		nk = n[-count1]
 		lenDJ = len(dJ)
+
 		for count2 in range(nk):
 			#extract dj for new coefficients of each neuron on the k-th layer
 			dj = array([dJ[i][count2] for i in range(lenDJ)])
@@ -192,20 +194,25 @@ def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
 	lenLstX = len(_lstX)
 	for count in range(_n):
 		J = 0
+		nr_correct = 0
 		for count2 in range(lenLstX):
 			y = array(_ann.Y(_lstX[count2])[-1])
 			e = y - array(_lstHatY[count2])
 			e = dot(e, e)
 			J += e
-			J /= lenLstX			
+			J /= lenLstX
+			nr_correct += int(argmax(y) == argmax(_lstHatY[count2]))
+
 		dJ = iterBackprop(x, _lrnCoef, _lstX, _lstHatY)
-		print(J)
+		print(J, nr_correct)
 	
 	for count in range(lenLstX):
 		y = array(_ann.Y(_lstX[count])[-1])
 		print(y, _lstHatY[count])
 
 
+x = ANN(AN(2), 784, 10, [210, 70, 20])
+images, labels = get_mnist()
+backprop(x, 0.3, images[0:100], labels[0:100], 20)
+#print(x.lstGet())
 
-x = ANN(AN(2), 2, 2, [3, 3])
-backprop(x, 0.1, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]], 10)
