@@ -1,5 +1,5 @@
 #XOR gate
-from numpy import zeros, ones, array, ndarray, eye, multiply, random, argmax, exp, diag, transpose
+from numpy import zeros, ones, array, ndarray, eye, multiply, random, argmax, exp, diag, transpose, save, load, reshape
 from include.data import get_mnist
 from time import time
 from numpy import set_printoptions
@@ -52,17 +52,17 @@ class ANN:
 			Nin = self.KN[counter1]
 		self.lst = lstANN
 
-	def f(self, _z, _rate=1, _zone=[0, 1]):
+	def f(self, _z, _rate=2, _zone=[0, 2]):
 		y = zeros(_z.shape)
 		_fArg = (_z > _zone[0]).astype(float)
-		y = _rate * (_z - _zone[0]) @ diag(_fArg)
+		y = _rate * _z @ diag(_fArg)
 
 		if _zone[1] is None: return y
 
 		_fArg  = (_z >= _zone[1]).astype(float)
 		_fNArg = (_z <  _zone[1]).astype(float)
 		y = y @ diag(_fNArg)
-		y += (2 * _rate * _zone[1] - _rate * (_z - _zone[0])) @ diag(_fArg)
+		y += _rate * (2 * _zone[1] - _z) @ diag(_fArg)
 
 		_fArg  = (_z <= 2 * _zone[1]).astype(float)
 		y = y @ diag(_fArg)
@@ -100,14 +100,14 @@ def gradJ(_ann, _k, _X, _hatY):
 
 	lstZ, lstY = _ann.Y(_X)
 	
-	lyrX = _X	#vdefault value in case this is the first layer.
-	if lenKN > 1: lyrX = lstY[-2] #if there is more than 1 layer, input is the previous layer output.
+	lyrX = _X						#default value in case this is the first layer.
+	if lenKN > 1: lyrX = lstY[-2]	#if there is more than 1 layer, input is the previous layer output.
 
 	y = lstY[-1]
-
+	y = softmax(y)
 	arrLyr = 2 * (y - _hatY)
 
-	lenK = len(lstY[-1])
+	lenK = n[-1]
 	_df = lstY[-1] >= lstZ[-1]
 	_df = (_df.astype(float) - 0.5 * ones(lenK)) * 2
 
@@ -124,7 +124,7 @@ def gradJ(_ann, _k, _X, _hatY):
 			_coefK = _ann.lst[-count1][:, :-1]
 			arrLyr = _coefK
 
-			lenK = len(lstY[-(count1+1)])
+			lenK = n[-(count1+1)]
 			_df = lstY[-(count1+1)] >= lstZ[-(count1+1)]
 			_df = (_df.astype(float) - 0.5 * ones(lenK)) * 2
 			arrCnt = diag(_df)
@@ -138,12 +138,12 @@ def gradJ(_ann, _k, _X, _hatY):
 		dj = dj @ lstGradJ[count]
 
 	#replicates lstGradJ by each input signal element to build dJ vector
-	lenX = len(lyrX)
-	dJ = []
-	for count in range(lenX):
-		dJ.append(array(dj) * lyrX[count])
-	dJ.append(array(dj))
-	dJ = array(dJ)
+	arrDj = array(dj)
+	arrLyrX = array(list(lyrX) + [1])
+	arrDj.shape   += (1,)
+	arrLyrX.shape += (1,)
+	a = arrDj @ transpose(arrLyrX)
+	dJ = transpose(a)
 	return dJ
 
 def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
@@ -164,12 +164,12 @@ def iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY):
 			dJ += gradJ(_ann, count1, _lstX[count2], _lstHatY[count2])
 		dJ /= lenLstX
 
-		nk = n[-count1]
-		lenDJ = len(dJ)
-
 		_coefK = _ann.lst[-count1]
 		_coefK[:, :-1] -= _lrnCoef * transpose(dJ[:-1])
 		_coefK[:, -1]  -= _lrnCoef * transpose(dJ[-1])
+		_lst = _ann.lst
+		_lst[-count1] = _coefK
+		setattr(_ann, 'lst', _lst)
 	return
 
 def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
@@ -177,35 +177,45 @@ def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
 	for count1 in range(_n):
 		J = 0
 		nr_correct = 0
+		iterBackprop(_ann, _lrnCoef, _lstX, _lstHatY)
 		for count2 in range(lenLstX):
 			z, y = _ann.Y(_lstX[count2])
-			y = array(y[-1]) 
-			e = y - array(_lstHatY[count2])
+			e = array(y[-1]) - array(_lstHatY[count2])
 			J += e @ e
 			J /= lenLstX
-			nr_correct += int(argmax(y) == argmax(_lstHatY[count2]))
+			nr_correct += int(argmax(y[-1]) == argmax(_lstHatY[count2]))
 
-		iterBackprop(x, _lrnCoef, _lstX, _lstHatY)
 		nr_correct = f"{round((nr_correct / lenLstX) * 100, 2)}%"
 		print(J, nr_correct, _n-count1)
-	
+		#print(_ann.lst)
 	for count in range(lenLstX):
 		z, y = _ann.Y(_lstX[count])
-		y = array(y[-1]) 
-		print(y, _lstHatY[count])
-	print(nr_correct)
+		print(y[-1], _lstHatY[count])
 	return
 
-#x = ANN(2, 2, [3, 3])
-#backprop(x, 0.01, [[1, 1]], [[0, 1]], 1)
+
+def saveANN(_ann):
+	_t = round(time())
+	_filename = 'c' + str(_t)
+	_filename = './data/' + _filename
+	save(_filename, array(_ann.lst, dtype=object), allow_pickle=True)
+
+
 
 
 #x = ANN(2, 2, [3, 3])
+#backprop(x, 0.01, [[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 1], [1, 1], [1, 1], [0, 0]], 2)
+#backprop(x, 0.05, [[1, 1]], [[0, 1]], 20)
 
+x = ANN(784, 10, [64])
 
-x = ANN(784, 10, [20])
 images, labels = get_mnist()
+
 images /= 255
 
-backprop(x, 0.05, images[0:100], labels[0:100], 100)
+backprop(x, 0.02, images[:200], labels[:200], 200)
 
+saveANN(x)
+
+#_lst = load('./data/c1717988024.npy', allow_pickle=True)
+#print(_lst)

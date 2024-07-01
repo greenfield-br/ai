@@ -211,8 +211,8 @@ def backprop(_ann, _lrnCoef, _lstX, _lstHatY, _n):
 		print(y, _lstHatY[count])
 
 
-x = ANN(AN(2), 784, 10, [210, 70, 20])
+x = ANN(AN(2), 784, 10, [100, 20])
 images, labels = get_mnist()
-backprop(x, 0.3, images[0:100], labels[0:100], 20)
+backprop(x, 0.02, images[0:100], labels[0:100], 100)
 #print(x.lstGet())
 
